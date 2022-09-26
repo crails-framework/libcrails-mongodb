@@ -1,0 +1,42 @@
+import intf_libs += libcrails%lib{crails}
+import intf_libs += libcrails-databases%lib{crails-databases}
+
+lib{crails-mongodb}: {hxx ixx txx cxx}{**} $impl_libs $intf_libs
+
+hxx{export}@./: cxx.importable = false
+
+# Build options.
+#
+cxx.poptions =+ "-I$out_root" "-I$src_root" "-I/usr/local/include/mongocxx/v_noabi" "-I/usr/local/include/bsoncxx/v_noabi" "-I/usr/include/mongocxx/v_noabi" "-I/usr/include/bsoncxx/v_noabi"
+
+{hbmia obja}{*}: cxx.poptions += -DLIBCRAILS_STATIC_BUILD
+{hbmis objs}{*}: cxx.poptions += -DLIBCRAILS_SHARED_BUILD
+
+# Export options.
+#
+lib{crails-mongodb}:
+{
+  cxx.export.poptions = "-I$out_root" "-I$src_root" "-I/usr/local/include/mongocxx/v_noabi" "-I/usr/local/include/bsoncxx/v_noabi" "-I/usr/include/mongocxx/v_noabi" "-I/usr/include/bsoncxx/v_noabi"
+  cxx.export.libs = $intf_libs
+}
+
+liba{crails-mongodb}: cxx.export.poptions += -DLIBCRAILS_STATIC
+libs{crails-mongodb}: cxx.export.poptions += -DLIBCRAILS_SHARED
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{crails-mongodb}: bin.lib.version = "-$version.project_id"
+else
+  lib{crails-mongodb}: bin.lib.version = "-$version.major.$version.minor"
+
+# Install into the libcrails-mongodb/ subdirectory of, say, /usr/include/
+# recreating subdirectories.
+#
+{hxx ixx txx}{*}:
+{
+  install         = include/
+  install.subdirs = true
+}

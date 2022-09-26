@@ -1,0 +1,3 @@
+# libcrails-mongodb
+
+C++ library

@@ -1,0 +1,6 @@
+$out_root/
+{
+  include libcrails-mongodb/
+}
+
+export $out_root/libcrails-mongodb/$import.target

@@ -1,0 +1,11 @@
+: 1
+name: libcrails-mongodb
+version: 2.0.0
+summary: crails-mongodb C++ library
+license: BSD-C3
+description-file: README.md
+url: https://example.org/libcrails-mongodb
+email: michael@unetresgrossebite.com
+depends: * build2 >= 0.15.0
+depends: * bpkg >= 0.15.0
+depends: { libcrails libcrails-databases } ^2.0.0
