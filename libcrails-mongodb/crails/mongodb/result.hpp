@@ -21,6 +21,15 @@ namespace Crails
       Result(mongocxx::cursor& cursor) : _begin(cursor.begin()), _end(cursor.end()) {}
       Result(const Result& result) : _begin(result._begin), _end(result._end) {}
 
+      std::vector<std::shared_ptr<MODEL>> to_vector()
+      {
+        std::vector<std::shared_ptr<MODEL>> list;
+
+        for (auto it = begin() ; it != end() ; ++it)
+          list.push_back(*it);
+        return list;
+      }
+
       class iterator
       {
         mongocxx::cursor::iterator it;
@@ -37,22 +46,20 @@ namespace Crails
           return *this;
         }
 
-	std::shared_ptr<MODEL> operator*()
+        std::shared_ptr<MODEL> operator*()
         {
           DataTree data;
           const auto& document = *it;
-	  auto model = std::make_shared<MODEL>();
+          auto model = std::make_shared<MODEL>();
 
           data.from_json(bsoncxx::to_json(document));
-          model.edit(data);
-	  return model;
+          model->edit(data);
+          return model;
         }
       };
 
       iterator begin() { return iterator(_begin); }
       iterator end() { return iterator(_end); }
-
-    private:
     };
   }
 }
