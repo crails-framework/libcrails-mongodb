@@ -48,6 +48,20 @@ namespace Crails
         return collection_for<MODEL>().count_documents(query);
       }
 
+      template<typename MODEL>
+      unsigned long count(mongocxx::pipeline& pipe, mongocxx::options::aggregate& options = mongocxx::options::aggregate())
+      {
+        // *probably* not the best way to count from a pipeline
+        Utils::TimeGuard timer(time);
+        start_connection_for<MODEL>();
+        auto cursor = collection_for<MODEL>().aggregate(pipe, options);
+        auto it = cursor.begin();
+        unsigned long size = 0;
+        while (it++ != cursor.end())
+          size++;
+        return size;
+      }
+
       template<typename MODEL_PTR>
       bool find_one(MODEL_PTR& model, bsoncxx::document::view_or_value query)
       {
@@ -109,6 +123,16 @@ namespace Crails
 
         start_connection_for<MODEL>();
         result = Result(collection_for<MODEL>().find(query, options));
+        return result.begin() != result.end();
+      }
+
+      template<typename MODEL>
+      bool find(Result<MODEL>& result, mongocxx::pipeline& pipe, mongocxx::options::aggregate& options = mongocxx::options::aggregate())
+      {
+        Utils::TimeGuard timer(time);
+
+        start_connection_for<MODEL>();
+        result = Result(collection_for<MODEL>().aggregate(pipe, options));
         return result.begin() != result.end();
       }
 
