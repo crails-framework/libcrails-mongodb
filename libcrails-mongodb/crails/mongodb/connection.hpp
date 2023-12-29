@@ -49,17 +49,13 @@ namespace Crails
       }
 
       template<typename MODEL>
-      unsigned long count(mongocxx::pipeline& pipe, mongocxx::options::aggregate& options = mongocxx::options::aggregate())
+      unsigned long count(mongocxx::pipeline& pipe, const mongocxx::options::aggregate& options = mongocxx::options::aggregate())
       {
         // *probably* not the best way to count from a pipeline
         Utils::TimeGuard timer(time);
         start_connection_for<MODEL>();
         auto cursor = collection_for<MODEL>().aggregate(pipe, options);
-        auto it = cursor.begin();
-        unsigned long size = 0;
-        while (it++ != cursor.end())
-          size++;
-        return size;
+        return std::distance(cursor.begin(), cursor.end());
       }
 
       template<typename MODEL_PTR>
@@ -122,12 +118,12 @@ namespace Crails
         Utils::TimeGuard timer(time);
 
         start_connection_for<MODEL>();
-        result = Result(collection_for<MODEL>().find(query, options));
+        result = Result<MODEL>(collection_for<MODEL>().find(query, options));
         return result.begin() != result.end();
       }
 
       template<typename MODEL>
-      bool find(Result<MODEL>& result, mongocxx::pipeline& pipe, mongocxx::options::aggregate& options = mongocxx::options::aggregate())
+      bool find(Result<MODEL>& result, mongocxx::pipeline& pipe, const mongocxx::options::aggregate& options = mongocxx::options::aggregate())
       {
         Utils::TimeGuard timer(time);
 
@@ -149,7 +145,7 @@ namespace Crails
       bool update_one(MODEL& model)
       {
         bsoncxx::document::view_or_value query = bsoncxx::from_json(model.to_json());
-        return update_one(query);
+        return update_one<MODEL>(model, query);
       }
 
       template<typename MODEL>
@@ -162,14 +158,14 @@ namespace Crails
           bsoncxx::builder::stream::document{} << "_id" << oid << bsoncxx::builder::stream::finalize,
           query
         );
-        return result;
+        return result->modified_count() == 1;
       }
 
       template<typename MODEL>
       bool insert_one(MODEL& model)
       {
         bsoncxx::document::view_or_value query = bsoncxx::from_json(model.to_json());
-        return insert_one(query);
+        return insert_one<MODEL>(model, query);
       }
 
       template<typename MODEL>
@@ -211,7 +207,7 @@ namespace Crails
       }
 
     protected:
-      void require_database(const std::string&);
+      void require_database(const std::string_view);
 
       std::string database_name;
       mongocxx::database* database = nullptr;

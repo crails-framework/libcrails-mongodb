@@ -12,7 +12,7 @@ Crails::MongoDB::Connection::~Connection()
 {
 }
 
-void Crails::MongoDB::Connection::require_database(const std::string& name)
+void Crails::MongoDB::Connection::require_database(const std::string_view name)
 {
   static const std::string default_configuration_name = "mongodb";
 
@@ -21,7 +21,7 @@ void Crails::MongoDB::Connection::require_database(const std::string& name)
     if (name == "default")
       database = &(CRAILS_DATABASE(MongoDB, default_configuration_name).get_database());
     else
-      database = &(CRAILS_DATABASE(MongoDB, name).get_database());
+      database = &(CRAILS_DATABASE(MongoDB, std::string(name.data(), name.length())).get_database());
     database_name = name;
   }
 }
