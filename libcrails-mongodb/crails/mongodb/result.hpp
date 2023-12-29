@@ -11,84 +11,175 @@ namespace Crails
 {
   namespace MongoDB
   {
-    template<typename MODEL>
-    class Result
+    struct ResultBase
     {
-      std::optional<mongocxx::cursor::iterator> _begin, _end;
-    public:
-      typedef MODEL value_type;
-
-      Result() {}
-      Result(mongocxx::cursor cursor) : _begin(cursor.begin()), _end(cursor.end()) {}
-      Result(const Result& result) : _begin(result._begin), _end(result._end) {}
-
-      std::vector<MODEL> to_vector()
+      ResultBase()
       {
-        std::vector<MODEL> list;
-
-        for (auto it = begin() ; it != end() ; ++it)
-          list.push_back(**it);
-        return list;
       }
 
-      std::vector<std::shared_ptr<MODEL>> to_shared_vector()
+      ResultBase(mongocxx::cursor c) : cursor(std::move(c))
       {
-        std::vector<std::shared_ptr<MODEL>> list;
+      }
 
-        for (auto it = begin() ; it != end() ; ++it)
-          list.push_back(std::move(*it));
-        return list;
+      ResultBase(ResultBase&& base) : cursor(std::move(base.cursor))
+      {
+      }
+
+      ResultBase& operator=(mongocxx::cursor c)
+      {
+        cursor = std::move(c);
+        return *this;
+      }
+
+      ResultBase& operator=(ResultBase&& base)
+      {
+        if (base.valid())
+          cursor = std::move(base.cursor);
+        return *this;
+      }
+
+      bool valid() const
+      {
+        return cursor.has_value();
       }
 
       class iterator
       {
-        std::optional<mongocxx::cursor::iterator> it;
-      public:
-        iterator(mongocxx::cursor::iterator it) : it(it) {}
-        iterator() {}
+      protected:
+        mongocxx::cursor::iterator source;
 
-        bool operator==(const iterator& other) const
-        {
-          return (!it.has_value() && !other.it.has_value())
-              || (it.has_value() && other.it.has_value() && it.value() == other.it.value());
-        }
-
-        inline bool operator!=(const iterator& other) const
-        {
-          return !(*this == other);
-        }
-
-        inline iterator& operator++()
-        {
-          if (it.has_value())
-            it.value()++;
-          return *this;
-        }
-
-        iterator& operator++(int i)
-        {
-          if (i > 0 && it.has_value())
-          {
-            while (i--)
-              it.value()++;
-          }
-          return *this;
-        }
-
-        std::unique_ptr<MODEL> operator*()
+        template<typename MODEL>
+        void load_into(MODEL& model) const
         {
           DataTree data;
-          const auto& document = *(it.value());
+
+          data.from_json(json());
+          model.set_id(data["_id"]["$oid"].as<std::string>());
+          model.edit(data);
+        }
+      public:
+        iterator(mongocxx::cursor::iterator it) : source(it)
+        {
+        }
+
+        bool operator!=(const iterator& it) const { return it.source != source; }
+        bool operator==(const iterator& it) const { return it.source == source; }
+
+        iterator& operator++()
+        {
+          source++;
+          return *this;
+        }
+
+        std::string json() const
+        {
+          return bsoncxx::to_json(*source);
+        }
+
+        template<typename MODEL>
+        MODEL value() const
+        {
+          MODEL model;
+
+          load_into(model);
+          return model;
+        }
+      };
+
+      iterator begin() { return cursor->begin(); }
+      iterator end() { return cursor->end(); }
+
+      std::optional<mongocxx::cursor> cursor;
+    };
+
+    template<typename MODEL>
+    struct Result : public ResultBase
+    {
+      Result(mongocxx::cursor c) : ResultBase(std::move(c))
+      {
+      }
+
+      Result(Result&& base) : ResultBase(std::move(base))
+      {
+      }
+
+      Result()
+      {
+      }
+
+      Result& operator=(Result&& base)
+      {
+        if (valid())
+          cursor = std::move(base.cursor);
+        return *this;
+      }
+
+      class iterator : public ResultBase::iterator
+      {
+        void load_into(MODEL& model) const
+        {
+          DataTree data;
+
+          data.from_json(json());
+          model.set_id(data["_id"]["$oid"].as<std::string>());
+          model.edit(data);
+        }
+      public:
+        iterator(mongocxx::cursor::iterator it) : ResultBase::iterator(it)
+        {
+        }
+
+        MODEL value() const
+        {
+          return ResultBase::iterator::value<MODEL>();
+        }
+
+        std::unique_ptr<MODEL> operator*() const
+        {
           auto model = std::make_unique<MODEL>();
 
-          data.from_json(bsoncxx::to_json(document));
-          model->edit(data);
+          load_into(*model);
           return std::move(model);
         }
       };
 
-      iterator begin() { return _begin.has_value() ? iterator(_begin.value()) : end(); }
-      iterator end() { return _end.has_value() ? iterator(_end.value()) : iterator(); }
+      iterator begin() { return cursor->begin(); }
+      iterator end() { return cursor->end(); }
+
+      std::vector<MODEL> to_vector()
+      {
+        std::vector<MODEL> result;
+        auto last = end();
+
+        for (auto it = begin() ; it != last ; ++it)
+          result.push_back(it.value());
+        return result;
+      }
+
+      std::vector<std::unique_ptr<MODEL>> to_unique_vector()
+      {
+        std::vector<std::unique_ptr<MODEL>> result;
+
+        pour_into_container(result);
+        return result;
+      }
+
+      std::vector<std::shared_ptr<MODEL>> to_shared_vector()
+      {
+        std::vector<std::shared_ptr<MODEL>> result;
+
+        pour_into_container(result);
+        return result;
+      }
+
+      template<typename CONTAINER_TYPE>
+      void pour_into_container(CONTAINER_TYPE& container)
+      {
+        auto last = end();
+
+        for (auto it = begin() ; it != last ; ++it)
+          container.push_back(std::move(*it));
+      }
     };
   }
 }

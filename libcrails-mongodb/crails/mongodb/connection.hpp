@@ -118,7 +118,9 @@ namespace Crails
         Utils::TimeGuard timer(time);
 
         start_connection_for<MODEL>();
-        result = Result<MODEL>(collection_for<MODEL>().find(query, options));
+        result.cursor = std::move(
+          collection_for<MODEL>().find(query, options)
+        );
         return result.begin() != result.end();
       }
 
@@ -128,7 +130,9 @@ namespace Crails
         Utils::TimeGuard timer(time);
 
         start_connection_for<MODEL>();
-        result = Result(collection_for<MODEL>().aggregate(pipe, options));
+        result.cursor = std::move(
+          collection_for<MODEL>().aggregate(pipe, options)
+        );
         return result.begin() != result.end();
       }
 
