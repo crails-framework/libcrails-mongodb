@@ -1,5 +1,6 @@
 import intf_libs += libcrails%lib{crails}
 import intf_libs += libcrails-databases%lib{crails-databases}
+import intf_libs += libmongocxx%lib{mongocxx}
 
 lib{crails-mongodb}: {hxx ixx txx cxx}{**} $impl_libs $intf_libs
 
@@ -7,7 +8,7 @@ hxx{export}@./: cxx.importable = false
 
 # Build options.
 #
-cxx.poptions =+ "-I$out_root" "-I$src_root" "-I/usr/local/include/mongocxx/v_noabi" "-I/usr/local/include/bsoncxx/v_noabi" "-I/usr/include/mongocxx/v_noabi" "-I/usr/include/bsoncxx/v_noabi"
+cxx.poptions =+ "-I$out_root" "-I$src_root"
 
 {hbmia obja}{*}: cxx.poptions += -DLIBCRAILS_STATIC_BUILD
 {hbmis objs}{*}: cxx.poptions += -DLIBCRAILS_SHARED_BUILD
